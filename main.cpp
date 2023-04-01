@@ -1,8 +1,8 @@
 /*
-ilQuizzatore v1.4
-by: PePpE aka lithium333
-ultima revisione: XX-07-2021
-librerie: SDL2, SDL_image, SDL2_ttf.
+ilQuizzatore v2.0
+by: Peppe aka lithium333
+review: 01-04-2023
+needed libraries: SDL2, SDL_image, SDL2_ttf.
 */
 
 #include <iostream>
@@ -23,6 +23,7 @@ librerie: SDL2, SDL_image, SDL2_ttf.
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_ttf.h>
     #include <SDL2/SDL_image.h>
+    #include <nlohmann/json.hpp>
 #endif
 #ifdef _WIN32
     #define DB_PATH ".\\db\\" //warn
@@ -35,7 +36,7 @@ librerie: SDL2, SDL_image, SDL2_ttf.
 
 /* DIRETTIVE FILE */
 #define FILE_HEADER "rules.conf"
-#define FILE_POOL "pool.txt"
+#define FILE_POOL "pool.json"
 #define CHAR_ID ''
 
 /* DIRETTIVE GRAFICHE */
@@ -294,9 +295,12 @@ filedat.close();
 num_pool=i;
 
 /* ## STAMPA SCHERMATA HOME ## */
-posiz.x=(SURF_L/2)-((img_logo->w)/2);
-posiz.y=SURF_H-(img_logo->h)-175;
-SDL_BlitSurface(img_logo,nullptr,schermo_buff,&posiz);
+if(img_logo!=nullptr) {
+	posiz.x=(SURF_L/2)-((img_logo->w)/2);
+	posiz.y=SURF_H-(img_logo->h)-175;
+	SDL_BlitSurface(img_logo,nullptr,schermo_buff,&posiz);
+}
+
 /* # Apertura font */
 if((font=TTF_OpenFont(((std::string)RES_PATH+(std::string)"Font.ttf").c_str(),44))==nullptr)
     {
@@ -312,11 +316,6 @@ posiz.y=32;
 TextToSurface(font,"INVIO: iniziare",colore,&posiz);
 colore=(SDL_Color){0xFF,0x00,0x00,0xFF};
 msg_buff.str("ESC: uscire");
-TTF_SizeUTF8(font,msg_buff.str().c_str(),&param,nullptr);
-posiz.x=(SURF_L/2)-(param/2);
-TextToSurface(font,msg_buff.str().c_str(),colore,&posiz);
-colore=(SDL_Color){0xAF,0x00,0xFF,0xFF};
-msg_buff.str("0/1: fullscreen");
 TTF_SizeUTF8(font,msg_buff.str().c_str(),&param,nullptr);
 posiz.x=SURF_L-param-96;
 TextToSurface(font,msg_buff.str().c_str(),colore,&posiz);
@@ -581,16 +580,6 @@ while(i<info.domande)
 	                        vett_usr[i].choice=0;
 	                        need_upd=true;
 	                        break;
-	                    case SDLK_0:
-                            SDL_SetWindowFullscreen(finestra,0);
-                            schermo=SDL_GetWindowSurface(finestra);
-	                        update();
-	                        break;
-                        case SDLK_1:
-                            SDL_SetWindowFullscreen(finestra,SDL_WINDOW_FULLSCREEN);
-                            schermo=SDL_GetWindowSurface(finestra);
-	                        update();
-	                        break;
                     }
                 }
 	            break;
@@ -640,7 +629,8 @@ for(i=0;i<info.domande;i++)
         
 /* ## STAMPA ESITO ## */
 SDL_FillRect(schermo_buff,nullptr,SDL_MapRGB(schermo_buff->format,0x00,0x00,0x00));
-SDL_BlitSurface(img_bg,nullptr,schermo_buff,nullptr);
+if(img_bg!=nullptr)
+	SDL_BlitSurface(img_bg,nullptr,schermo_buff,nullptr);
 TTF_SizeUTF8(font_head,"PREMERE INVIO PER LA REVISIONE (ESC PER USCIRE)",&param,nullptr);
 posiz.x=(SURF_L/2)-(param/2);
 posiz.y=32;
@@ -783,16 +773,6 @@ while(i<info.domande)
                     case SDLK_u:
                         i=info.domande;
                         break;
-                    case SDLK_0:
-                        SDL_SetWindowFullscreen(finestra,0);
-                        schermo=SDL_GetWindowSurface(finestra);
-	                    update();
-	                    break;
-                    case SDLK_1:
-                        SDL_SetWindowFullscreen(finestra,SDL_WINDOW_FULLSCREEN);
-                        schermo=SDL_GetWindowSurface(finestra);
-	                    update();
-	                    break;
                 }
                 break;
             }
@@ -824,7 +804,7 @@ if(SDL_Init(SDL_INIT_EVERYTHING)<0) {
     exit(EXIT_FAILURE);
 }
 /* ## CREARE FINESTRA ## */
-if((finestra=SDL_CreateWindow("ilQuizzatore v1.4 (rev 2021.07)",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,SIZE_L,SIZE_H,SDL_WINDOW_SHOWN))==nullptr)
+if((finestra=SDL_CreateWindow("ilQuizzatore v2.0 (rev 2023.04)",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,SIZE_L,SIZE_H,SDL_WINDOW_SHOWN))==nullptr)
     {
     std::cerr << "Impossibile inizializzare la finestra!" << std::endl;
     SDL_Quit();
@@ -852,17 +832,11 @@ if((IMG_Init(IMG_INIT_JPG)&IMG_INIT_JPG)!=IMG_INIT_JPG)
 if((img_logo=IMG_Load(((std::string)RES_PATH+(std::string)"logo.png").c_str()))==nullptr)
     {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,"ERRORE","Impossibile caricare logo.png",nullptr);
-    IMG_Quit();
-    SDL_Quit();
-    exit(EXIT_FAILURE);
     }
 /* ## CARICARE SFONDO ESITO ## */
 if((img_bg=IMG_Load(((std::string)RES_PATH+(std::string)"bg.jpg").c_str()))==nullptr)
     {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,"ERRORE","Impossibile caricare bg.jpg",nullptr);
-    IMG_Quit();
-    SDL_Quit();
-    exit(EXIT_FAILURE);
     }
 /* ## AVVIARE SOTTOSISTEMA TTF ## */
 if(TTF_Init()==-1)
@@ -914,14 +888,6 @@ while(status==0) {
             break;
         case SDL_KEYDOWN:
             switch(interfaccia.key.keysym.sym) {
-                case SDLK_0:
-                    SDL_SetWindowFullscreen(finestra,0);
-                    schermo=SDL_GetWindowSurface(finestra);
-                    break;
-                case SDLK_1:
-                    SDL_SetWindowFullscreen(finestra,SDL_WINDOW_FULLSCREEN);
-                    schermo=SDL_GetWindowSurface(finestra);
-                    break;
                 case SDLK_RETURN:
                     status=1;
                     break;
